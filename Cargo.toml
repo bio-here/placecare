@@ -9,7 +9,7 @@ categories = ["command-line-utilities", "science"]
 
 description = "A toolkit to quickly search for cis-acting regulatory elements using the PLACE database"
 homepage = "https://bio-here.github.io/placecare"
-documentation = "https://docs.rs/biohere_placecare"
+documentation = "https://docs.rs/placecare"
 repository = "https://github.com/bio-here/placecare"
 
 [profile.release]
