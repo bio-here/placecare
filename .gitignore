@@ -4,3 +4,5 @@
 ./build.log
 
 /db_place/*.fasta
+
+/test_src
