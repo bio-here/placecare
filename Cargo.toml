@@ -1,7 +1,7 @@
 [package]
 name = "placecare"
 authors = ["Zhixia <zhixiaovo@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "MIT"
 keywords = ["bioinformatics", "sequence-search",]
@@ -10,7 +10,7 @@ categories = ["command-line-utilities", "science"]
 description = "A toolkit to quickly search for cis-acting regulatory elements using the PLACE database"
 homepage = "https://bio-here.github.io/placecare"
 documentation = "https://docs.rs/biohere_placecare"
-repository = "https://github.com/bio-here/placehere"
+repository = "https://github.com/bio-here/placecare"
 
 [profile.release]
 opt-level = 3
@@ -24,7 +24,7 @@ name = "placecare"
 path = "src/main.rs"
 
 [lib]
-name = "biohere_placecare"
+name = "placecare"
 path = "src/lib.rs"
 
 [build-dependencies]

@@ -1,11 +1,16 @@
-
+[![Version](https://img.shields.io/badge/version-0.1.1-green.svg)]()
+[![GitHub](https://img.shields.io/badge/github-bio--here%2Fplacecare-blue.svg)](https://github.com/bio-here/placecare)
+[![Build Status](https://travis-ci.org/bio-here/placecare.svg?branch=master)](https://travis-ci.org/bio-here/placecare)
+[![Crates.io](https://img.shields.io/crates/v/placecare.svg)](https://crates.io/crates/placecare)
+[![Documentation](https://docs.rs/placecare/badge.svg)](https://docs.rs/placecare)
+[![License](https://img.shields.io/crates/l/MIT.svg)]()
 
 阅读其他语言版本的文档：
 - [English](README.md)
 
 # PLACE-CARE
 
-placecare 是一个使用 PLACE数据库 预测顺式作用元件的工具。
+placecare 是一个使用 PLACE数据库 基于字符串搜索算法预测顺式作用元件的工具。
 
 使用 placecare，你可以：
 
@@ -17,8 +22,6 @@ placecare 是一个使用 PLACE数据库 预测顺式作用元件的工具。
 
 # 安装
 
-现在你可以通过 [访问网站](https://bio-here.github.io/placehere) 来使用placecare (通过Wasm)。
-
 如果你的电脑上包含Rust工具链，你可以使用如下命令安装我们的命令行程序：
 
 ```shell
@@ -26,18 +29,22 @@ cargo install placecare
 ```
 
 如果你并没有安装Rust工具链，你也可以在 GitHub的Release中 直接下载我们编译后的二进制文件：
-- [Release](https://bio-here.github.io/placecare)
+- [Release](https://bio-here.github.io/placecare/release)
 
+
+如果你要使用我们的库，只需要：
+```shell
+cargo add placecare
+
+```
 
 # 使用
 
-首先你需要这样使用：
-
+这里介绍了我们的库如何使用。
 placehere的核心功能编写在 `place_search` 模块中，I/O操作编写在 `io` 模块，
 `place_desc` 模块是对PLACE数据的描述文件。
 
 ## 搜索元件
-
 
 我们提供了多种输入序列的方式，如下所示：
 ```rust

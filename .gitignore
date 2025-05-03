@@ -6,3 +6,5 @@
 /db_place/*.fasta
 
 /test_src
+
+Cargo.lock

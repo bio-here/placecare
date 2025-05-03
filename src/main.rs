@@ -2,9 +2,9 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
-use biohere_placecare::io::{RecordDesc, SearchResult};
-use biohere_placecare::place_desc::SeqDesc;
-use biohere_placecare::place_search;
+use placecare::io::{RecordDesc, SearchResult};
+use placecare::place_desc::SeqDesc;
+use placecare::place_search;
 use clap::*;
 
 fn main() {
@@ -74,9 +74,9 @@ fn main() {
             let inputs = inputs.iter().map(|x| x.as_str()).collect::<Vec<_>>();
 
             if id {
-                res.extend(biohere_placecare::place_search::Search::query_elements_by_id(&inputs));
+                res.extend(place_search::Search::query_elements_by_id(&inputs));
             } else if ac {
-                res.extend(biohere_placecare::place_search::Search::query_elements_by_ac(&inputs));
+                res.extend(place_search::Search::query_elements_by_ac(&inputs));
             }
 
             let output = print_query(res);
@@ -103,7 +103,7 @@ fn print_search(res: Vec<SearchResult>) -> String {
         output.push_str("\n");
     }
     for x in res {
-        let seqs = biohere_placecare::io::SearchedDescList::from(x.search_descs);
+        let seqs = placecare::io::SearchedDescList::from(x.search_descs);
         output.push_str(&format!("{}\n", seqs));
     }
     output
