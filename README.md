@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-0.1.1-green.svg)]()
+[![Version](https://img.shields.io/badge/version-0.1.3-green.svg)]()
 [![GitHub](https://img.shields.io/badge/github-bio--here%2Fplacecare-blue.svg)](https://github.com/bio-here/placecare)
 [![Build Status](https://travis-ci.org/bio-here/placecare.svg?branch=master)](https://travis-ci.org/bio-here/placecare)
 [![Crates.io](https://img.shields.io/crates/v/placecare.svg)](https://crates.io/crates/placecare)
@@ -38,6 +38,8 @@ cargo add placecare
 ```
 
 # Usage
+
+See more on [bio-here/placecare](https://bio-here.github.io/placecare)
 
 This section introduces how to use our library.
 The core functionality of placehere is written in the `place_search` module, I/O operations are written in the `io` module,

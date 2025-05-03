@@ -1,4 +1,4 @@
-[![Version](https://img.shields.io/badge/version-0.1.1-green.svg)]()
+[![Version](https://img.shields.io/badge/version-0.1.3-green.svg)]()
 [![GitHub](https://img.shields.io/badge/github-bio--here%2Fplacecare-blue.svg)](https://github.com/bio-here/placecare)
 [![Build Status](https://travis-ci.org/bio-here/placecare.svg?branch=master)](https://travis-ci.org/bio-here/placecare)
 [![Crates.io](https://img.shields.io/crates/v/placecare.svg)](https://crates.io/crates/placecare)
@@ -40,6 +40,8 @@ cargo add placecare
 
 # 使用
 
+详细内容见 [bio-here/placecare](https://bio-here.github.io/placecare)
+
 这里介绍了我们的库如何使用。
 placehere的核心功能编写在 `place_search` 模块中，I/O操作编写在 `io` 模块，
 `place_desc` 模块是对PLACE数据的描述文件。
@@ -48,7 +50,7 @@ placehere的核心功能编写在 `place_search` 模块中，I/O操作编写在 
 
 我们提供了多种输入序列的方式，如下所示：
 ```rust
-use placehere::io::RecordDesc;
+use placecare::io::RecordDesc;
 
 let input = vec![RecordDesc::new("Gh_01", "TTATAGACTCGATGGCCGCGCGG")];
 let input = RecordDesc::from_file("./input.fasta");
@@ -79,7 +81,7 @@ let result = Search::search_elements(input).unwrap();
 
 我们可以使用以下方法查询PLACE数据库中的元件信息。
 ```rust
-use biohere_placecare::search::Search;
+use placecare::search::Search;
 
 The function will return a vector of Option<SeqDesc>
 // for which is a result of the input sequence.

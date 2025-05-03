@@ -1,10 +1,10 @@
 /target
 /.idea
 
-./build.log
+./build.log*
 
 /db_place/*.fasta
 
 /test_src
 
-Cargo.lock
+./Cargo.lock
