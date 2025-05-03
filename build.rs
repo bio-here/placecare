@@ -18,6 +18,10 @@ fn main() {
     let _out_dir = std::env::var("OUT_DIR").unwrap();
     Builder::new().filter_level(log::LevelFilter::Info).init();
 
+    if std::path::Path::new("src/db_file/place.db").exists() {
+        info!("place.db already exists, skipping serialization.");
+        return;
+    }
     place_db_serialize();
 }
 
