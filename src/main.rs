@@ -2,10 +2,10 @@ use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
 
+use clap::*;
 use placecare::io::{RecordDesc, SearchResult};
 use placecare::place_desc::SeqDesc;
 use placecare::place_search;
-use clap::*;
 
 fn main() {
     let args = Cli::parse();
@@ -146,7 +146,7 @@ fn write_content(path: PathBuf, content: String) -> Result<(), std::io::Error> {
 #[command(next_line_help = true)]
 #[command(
     author = "bio-here",
-    version = "0.1.0", 
+    version = "1.0.0", 
     about = "Cis-regulatory element search tool using PLACE database", 
     long_about = None
 )]

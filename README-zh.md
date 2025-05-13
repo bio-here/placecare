@@ -1,9 +1,9 @@
-[![Version](https://img.shields.io/badge/version-0.1.3-green.svg)]()
-[![GitHub](https://img.shields.io/badge/github-bio--here%2Fplacecare-blue.svg)](https://github.com/bio-here/placecare)
-[![Build Status](https://travis-ci.org/bio-here/placecare.svg?branch=master)](https://travis-ci.org/bio-here/placecare)
-[![Crates.io](https://img.shields.io/crates/v/placecare.svg)](https://crates.io/crates/placecare)
-[![Documentation](https://docs.rs/placecare/badge.svg)](https://docs.rs/placecare)
-[![License](https://img.shields.io/crates/l/MIT.svg)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-green.svg?style=for-the-badge)]()
+[![GitHub](https://img.shields.io/badge/github-bio--here%2Fplacecare-blue.svg?style=for-the-badge)](https://github.com/bio-here/placecare)
+[![Crates.io](https://img.shields.io/crates/v/placecare?style=for-the-badge)](https://crates.io/crates/placecare)
+[![Documentation](https://img.shields.io/docsrs/placecare/latest?style=for-the-badge)](https://docs.rs/placecare)
+[![License](https://img.shields.io/crates/l/MIT.svg?style=for-the-badge)]()
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/bio-here/placecare)
 
 阅读其他语言版本的文档：
 - [English](README.md)

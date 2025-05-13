@@ -5,30 +5,9 @@ use crate::db::IUPAC_MAP;
 use crate::io::{RecordDesc, SearchResult};
 use crate::place_desc::SeqDesc;
 use crate::{db::PLACE_DB, io::SearchedDesc};
-use aho_corasick::AhoCorasick;
-use lazy_static::lazy_static;
 use rayon::prelude::*;
-use regex_automata::Input;
-use regex_automata::MatchKind;
-use regex_automata::dfa::Automaton;
-use regex_automata::dfa::OverlappingState;
-use regex_automata::dfa::dense;
 
 use std::sync::Mutex;
-
-lazy_static! {
-    /// The initialized Aho-Corasick automaton.
-    pub static ref AC: AhoCorasick = build_ac();
-
-}
-
-fn build_ac() -> AhoCorasick {
-    AhoCorasick::builder()
-        .match_kind(aho_corasick::MatchKind::Standard)
-        .ascii_case_insensitive(false)
-        .build(PLACE_DB.seq_desc.exact.iter().map(|x| x.sq.as_str()))
-        .unwrap()
-}
 
 pub struct Search;
 
@@ -80,86 +59,73 @@ impl Search {
         Ok(total)
     }
 
-    /// Search element by exact match with Aho-Corasick algorithm.
+    /// Search element by exact match with KMP algorithm.
     fn search_element_exact(
         query: &RecordDesc,
     ) -> Result<Vec<SearchedDesc>, Box<dyn std::error::Error>> {
         let seqs = &PLACE_DB.seq_desc.exact;
         let mut descs = Vec::with_capacity(200);
 
-        for mat in AC.find_overlapping_iter(&query.seq) {
-            let pat = mat.pattern();
-            let seq = &seqs[pat];
-            let searched = SearchedDesc::new_from_ref(
-                &query.id,       // id
-                mat.start() + 1, // start position
-                mat.end() + 1,   // end position
-                1,               // sequence direction
-                &seq.id,         // element id
-                seq.sq.len(),    // element length
-                &seq.sq,         // element sequence
-                &seq.ac,         // element accession number
-                &seq.de,         // element description
-            );
-            descs.push(searched);
+        // 对正向序列进行搜索
+        for pattern in seqs.iter() {
+            let matches = Self::kmp_search(&query.seq, &pattern.sq);
+            for &start in &matches {
+                let end = start + pattern.sq.len();
+                let searched = SearchedDesc::new_from_ref(
+                    &query.id,        // id
+                    start + 1,        // start position (1-based)
+                    end + 1,          // end position (1-based)
+                    1,                // sequence direction
+                    &pattern.id,      // element id
+                    pattern.sq.len(), // element length
+                    &pattern.sq,      // element sequence
+                    &pattern.ac,      // element accession number
+                    &pattern.de,      // element description
+                );
+                descs.push(searched);
+            }
         }
 
+        // 对反向互补序列进行搜索
         let reverse = Self::reverse_complement(&query.seq);
-        for mat in AC.find_overlapping_iter(&reverse) {
-            let pat = mat.pattern();
-            let seq = &seqs[pat];
-            let searched = SearchedDesc::new(
-                query.id.clone(),            // id
-                query.len + 1 - mat.end(),   // start position
-                query.len + 1 - mat.start(), // end position
-                0,                           // sequence direction
-                seq.id.clone(),              // element id
-                seq.sq.len(),                // element length
-                seq.sq.clone(),              // element sequence
-                seq.ac.clone(),              // element accession number
-                seq.de.clone(),              // element description
-            );
-            descs.push(searched);
+        for pattern in seqs.iter() {
+            let matches = Self::kmp_search(&reverse, &pattern.sq);
+            for &start in &matches {
+                let end = start + pattern.sq.len();
+                let searched = SearchedDesc::new_from_ref(
+                    &query.id,             // id
+                    query.len + 1 - end,   // start position
+                    query.len + 1 - start, // end position
+                    0,                     // sequence direction
+                    &pattern.id,           // element id
+                    pattern.sq.len(),      // element length
+                    &pattern.sq,           // element sequence
+                    &pattern.ac,           // element accession number
+                    &pattern.de,           // element description
+                );
+                descs.push(searched);
+            }
         }
 
         Ok(descs)
     }
 
-    /// Search element by IUPAC match with Regex.
+    /// Search element by IUPAC match with KMP-based pattern matching.
     fn search_element_iupac(
         query: &RecordDesc,
     ) -> Result<Vec<SearchedDesc>, Box<dyn std::error::Error>> {
         let seqs = &PLACE_DB.seq_desc.iupac;
         let mut descs = Vec::with_capacity(200);
 
-        let _iupac_regex = seqs
-            .iter()
-            .map(|x| Self::iupac_2_regex(&x.sq))
-            .collect::<Vec<_>>();
-
-        seqs.iter().for_each(|seq| {
-            let iupac_regex = Self::iupac_2_regex(&seq.sq);
-
-            let dfa = dense::DFA::builder()
-                .configure(dense::DFA::config().match_kind(MatchKind::All))
-                .build(&iupac_regex)
-                .unwrap();
-
-            let input = Input::new(&query.seq);
-            let mut state = OverlappingState::start();
-            while let Some(hm) = {
-                dfa.try_search_overlapping_fwd(&input, &mut state).unwrap();
-                state.get_match()
-            } {
-                let pat = hm.pattern();
-                let seq = &seqs[pat];
-
-                let end = hm.offset();
-                let start = end - seq.sq.len();
+        for seq in seqs {
+            // 对正向序列进行搜索
+            let matches = Self::kmp_search_with_iupac(&query.seq, &seq.sq);
+            for &start in &matches {
+                let end = start + seq.sq.len();
                 let searched = SearchedDesc::new_from_ref(
                     &query.id,    // id
-                    start + 1,    // start position
-                    end + 1,      // end position
+                    start + 1,    // start position (1-based)
+                    end + 1,      // end position (1-based)
                     1,            // sequence direction
                     &seq.id,      // element id
                     seq.sq.len(), // element length
@@ -170,18 +136,11 @@ impl Search {
                 descs.push(searched);
             }
 
+            // 对反向互补序列进行搜索
             let reverse = Self::reverse_complement(&query.seq);
-            let input = Input::new(&reverse);
-            let mut state = OverlappingState::start();
-            while let Some(hm) = {
-                dfa.try_search_overlapping_fwd(&input, &mut state).unwrap();
-                state.get_match()
-            } {
-                let pat = hm.pattern();
-                let seq = &seqs[pat];
-
-                let end = hm.offset();
-                let start = end - seq.sq.len();
+            let matches = Self::kmp_search_with_iupac(&reverse, &seq.sq);
+            for &start in &matches {
+                let end = start + seq.sq.len();
                 let searched = SearchedDesc::new_from_ref(
                     &query.id,             // id
                     query.len + 1 - end,   // start position
@@ -195,7 +154,7 @@ impl Search {
                 );
                 descs.push(searched);
             }
-        });
+        }
 
         Ok(descs)
     }
@@ -232,23 +191,135 @@ impl Search {
     }
 }
 
-/// Tool functions
+/// KMP Algorithm
 impl Search {
-    /// Convert IUPAC code to regex pattern.
-    pub(crate) fn iupac_2_regex(query: &str) -> String {
-        let mut regex = String::with_capacity(query.len() * 3);
-        for c in query.chars() {
-            if let Some(&pattern) = IUPAC_MAP.get(&c) {
-                regex.push_str(pattern);
+    /// Compute the longest prefix-suffix (LPS) array
+    fn compute_lps(pattern: &str) -> Vec<usize> {
+        let chars: Vec<char> = pattern.chars().collect();
+        let n = chars.len();
+        let mut lps = vec![0; n];
+
+        let mut len = 0;
+        let mut i = 1;
+
+        while i < n {
+            if chars[i] == chars[len] {
+                len += 1;
+                lps[i] = len;
+                i += 1;
             } else {
-                regex.push(c);
+                if len != 0 {
+                    len = lps[len - 1];
+                } else {
+                    lps[i] = 0;
+                    i += 1;
+                }
             }
         }
 
-        regex
+        lps
     }
 
-    pub(crate) fn reverse_complement(query: &str) -> String {
+    /// KMP search algorithm
+    fn kmp_search(text: &str, pattern: &str) -> Vec<usize> {
+        let mut matches = Vec::new();
+        if pattern.is_empty() {
+            return matches;
+        }
+
+        let text_chars: Vec<char> = text.chars().collect();
+        let pattern_chars: Vec<char> = pattern.chars().collect();
+
+        let n = text_chars.len();
+        let m = pattern_chars.len();
+
+        if m > n {
+            return matches;
+        }
+
+        let lps = Self::compute_lps(pattern);
+
+        let mut i = 0; // Text pointer
+        let mut j = 0; // Pattern pointer
+
+        while i < n {
+            if pattern_chars[j] == text_chars[i] {
+                i += 1;
+                j += 1;
+            }
+
+            if j == m {
+                matches.push(i - j);
+                j = lps[j - 1]; 
+            } else if i < n && pattern_chars[j] != text_chars[i] {
+                if j != 0 {
+                    j = lps[j - 1];
+                } else {
+                    i += 1;
+                }
+            }
+        }
+
+        matches
+    }
+
+    /// KMP search algorithm with IUPAC support
+    fn kmp_search_with_iupac(text: &str, pattern: &str) -> Vec<usize> {
+        let mut matches = Vec::new();
+        if pattern.is_empty() {
+            return matches;
+        }
+
+        let text_chars: Vec<char> = text.chars().collect();
+        let pattern_chars: Vec<char> = pattern.chars().collect();
+
+        let n = text_chars.len();
+        let m = pattern_chars.len();
+
+        if m > n {
+            return matches;
+        }
+
+        // Check if the pattern matches
+        'outer: for i in 0..=n - m {
+            for j in 0..m {
+                if !Self::is_iupac_match(text_chars[i + j], pattern_chars[j]) {
+                    continue 'outer;
+                }
+            }
+            matches.push(i);
+        }
+
+        matches
+    }
+}
+
+/// Tool functions
+impl Search {
+    /// Check if a character in the text matches the IUPAC pattern
+    fn is_iupac_match(text_char: char, pattern_char: char) -> bool {
+        if pattern_char == text_char {
+            return true;
+        }
+
+        if let Some(pattern) = IUPAC_MAP.get(&pattern_char) {
+            let regex_pattern = pattern.to_string();
+            if regex_pattern.len() == 1 {
+                return regex_pattern.chars().next().unwrap() == text_char;
+            } else {
+                let mut chars_inside_brackets = regex_pattern
+                    .trim_start_matches('[')
+                    .trim_end_matches(']')
+                    .chars();
+                return chars_inside_brackets.any(|c| c == text_char);
+            }
+        }
+
+        false
+    }
+
+    /// Get reverse complement chain
+    fn reverse_complement(query: &str) -> String {
         let mut rev_comp = String::with_capacity(query.len());
         for c in query.chars().rev() {
             match c {

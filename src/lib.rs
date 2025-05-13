@@ -43,7 +43,7 @@
 //! We can query the PLACE databse using the following methods:
 //!
 //! ```rust
-//! use placecare::search::Search;
+//! use placecare::place_search::Search;
 //!
 //! // The function will return a vector of Option<SeqDesc>
 //! // for which is a result of the input sequence.
