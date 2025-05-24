@@ -19,19 +19,22 @@ fn main() {
             outfile,
         } => {
             let mut res = vec![];
+            
+            let inputs: Vec<RecordDesc>;
+            let single_input: RecordDesc;
 
             if let Some(input) = input {
                 println!("Input file: {}", input);
-                let inputs = RecordDesc::from_file(&input);
+                inputs = RecordDesc::from_file(&input);
                 res.extend(
                     place_search::Search::search_elements(&inputs)
                         .expect("Error: Failed to search elements"),
                 );
             } else if let Some(input_seq) = input_seq {
                 println!("Input sequence: {}", input_seq);
-                let inputs = RecordDesc::new("GhInput", &input_seq);
+                single_input = RecordDesc::new("GhInput", &input_seq);
                 res.extend(
-                    place_search::Search::search_elements_single_seq(&inputs)
+                    place_search::Search::search_elements_single_seq(&single_input)
                         .expect("Error: Failed to search elements"),
                 );
             }
@@ -146,7 +149,7 @@ fn write_content(path: PathBuf, content: String) -> Result<(), std::io::Error> {
 #[command(next_line_help = true)]
 #[command(
     author = "bio-here",
-    version = "1.0.0", 
+    version = "1.1.0", 
     about = "Cis-regulatory element search tool using PLACE database", 
     long_about = None
 )]

@@ -21,20 +21,21 @@ impl Search {
     pub fn search_elements(
         query: &[RecordDesc],
     ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error>> {
-        let res_p: Mutex<Vec<SearchResult>> = Mutex::new(Vec::new());
+        let mut res_p: Vec<SearchResult> = Vec::new();
 
+        // not gonna use rayon as it's a overhead for small data.
         query
-            .par_iter()
+            .iter()
             .for_each(|seq| match Self::search_elements_single_seq(&seq) {
                 Ok(r) => {
-                    res_p.lock().unwrap().extend(r);
+                    res_p.extend(r);
                 }
                 Err(e) => {
                     println!("Error: {}", e);
                 }
             });
 
-        let res = res_p.lock().unwrap().to_owned();
+        let res = res_p.to_owned();
         Ok(res)
     }
 
@@ -42,19 +43,19 @@ impl Search {
     pub fn search_elements_single_seq(
         query: &RecordDesc,
     ) -> Result<Vec<SearchResult>, Box<dyn std::error::Error>> {
-        let mut total: Vec<SearchResult> = vec![];
         let mut searched: Vec<SearchedDesc> = vec![];
+        let pre_size = query.len() / 5;
 
-        let res_exact = Self::search_element_exact(query)?;
-        let res_iupac = Self::search_element_iupac(query)?;
+        let res_exact = Self::search_element_exact(query, pre_size)?;
+        let res_iupac = Self::search_element_iupac(query, pre_size)?;
         searched.extend(res_exact);
         searched.extend(res_iupac);
         searched.sort_unstable_by(|a, b| a.q_start.cmp(&b.q_start));
 
-        total.push(SearchResult::new(
-            &query.id, // id
-            searched,  // search results
-        ));
+        let total = vec![SearchResult::new(
+            &query.id(), // id
+            searched,    // search results
+        )];
 
         Ok(total)
     }
@@ -62,17 +63,19 @@ impl Search {
     /// Search element by exact match with KMP algorithm.
     fn search_element_exact(
         query: &RecordDesc,
+        presize: usize,
     ) -> Result<Vec<SearchedDesc>, Box<dyn std::error::Error>> {
         let seqs = &PLACE_DB.seq_desc.exact;
-        let mut descs = Vec::with_capacity(200);
+        let descs = Mutex::new(Vec::with_capacity(presize));
 
-        // 对正向序列进行搜索
-        for pattern in seqs.iter() {
-            let matches = Self::kmp_search(&query.seq, &pattern.sq);
+        // Search the forward sequence
+        seqs.par_iter().for_each(|pattern| {
+            let matches = Self::kmp_search(&query.seq(), &pattern.sq);
+            let mut partial_descs = Vec::with_capacity(matches.len());
             for &start in &matches {
                 let end = start + pattern.sq.len();
-                let searched = SearchedDesc::new_from_ref(
-                    &query.id,        // id
+                let searched = SearchedDesc::new(
+                    &query.id(),      // id
                     start + 1,        // start position (1-based)
                     end + 1,          // end position (1-based)
                     1,                // sequence direction
@@ -82,81 +85,91 @@ impl Search {
                     &pattern.ac,      // element accession number
                     &pattern.de,      // element description
                 );
-                descs.push(searched);
+                partial_descs.push(searched);
             }
-        }
+            descs.lock().unwrap().extend(partial_descs);
+        });
 
-        // 对反向互补序列进行搜索
-        let reverse = Self::reverse_complement(&query.seq);
-        for pattern in seqs.iter() {
+        // Search the reverse complement sequence
+        let reverse = Self::reverse_complement(&query.seq());
+        seqs.par_iter().for_each(|pattern| {
             let matches = Self::kmp_search(&reverse, &pattern.sq);
+            let mut partial_descs = Vec::with_capacity(matches.len());
             for &start in &matches {
                 let end = start + pattern.sq.len();
-                let searched = SearchedDesc::new_from_ref(
-                    &query.id,             // id
-                    query.len + 1 - end,   // start position
-                    query.len + 1 - start, // end position
-                    0,                     // sequence direction
-                    &pattern.id,           // element id
-                    pattern.sq.len(),      // element length
-                    &pattern.sq,           // element sequence
-                    &pattern.ac,           // element accession number
-                    &pattern.de,           // element description
+                let searched = SearchedDesc::new(
+                    &query.id(),             // id
+                    query.len() + 1 - end,   // start position
+                    query.len() + 1 - start, // end position
+                    0,                       // sequence direction
+                    &pattern.id,             // element id
+                    pattern.sq.len(),        // element length
+                    &pattern.sq,             // element sequence
+                    &pattern.ac,             // element accession number
+                    &pattern.de,             // element description
                 );
-                descs.push(searched);
+                partial_descs.push(searched);
             }
-        }
+            descs.lock().unwrap().extend(partial_descs);
+        });
 
-        Ok(descs)
+        Ok(descs.into_inner().unwrap())
     }
 
     /// Search element by IUPAC match with KMP-based pattern matching.
     fn search_element_iupac(
         query: &RecordDesc,
+        presize: usize,
     ) -> Result<Vec<SearchedDesc>, Box<dyn std::error::Error>> {
         let seqs = &PLACE_DB.seq_desc.iupac;
-        let mut descs = Vec::with_capacity(200);
+        let descs = Mutex::new(Vec::with_capacity(presize));
 
-        for seq in seqs {
-            // 对正向序列进行搜索
-            let matches = Self::kmp_search_with_iupac(&query.seq, &seq.sq);
+        seqs.par_iter().for_each(|pattern| {
+            // Search the forward sequence
+            let matches = Self::kmp_search_with_iupac(&query.seq(), &pattern.sq);
+            let mut partial_descs = Vec::with_capacity(matches.len());
             for &start in &matches {
-                let end = start + seq.sq.len();
-                let searched = SearchedDesc::new_from_ref(
-                    &query.id,    // id
+                let end = start + pattern.sq.len();
+                let searched = SearchedDesc::new(
+                    &query.id(),  // id
                     start + 1,    // start position (1-based)
                     end + 1,      // end position (1-based)
                     1,            // sequence direction
-                    &seq.id,      // element id
-                    seq.sq.len(), // element length
-                    &seq.sq,      // element sequence
-                    &seq.ac,      // element accession number
-                    &seq.de,      // element description
+                    &pattern.id,      // element id
+                    pattern.sq.len(), // element length
+                    &pattern.sq,      // element sequence
+                    &pattern.ac,      // element accession number
+                    &pattern.de,      // element description
                 );
-                descs.push(searched);
+                partial_descs.push(searched);
             }
+            descs.lock().unwrap().extend(partial_descs);
+        });
 
-            // 对反向互补序列进行搜索
-            let reverse = Self::reverse_complement(&query.seq);
-            let matches = Self::kmp_search_with_iupac(&reverse, &seq.sq);
+        seqs.par_iter().for_each(|pattern| {
+            // Search the reverse complement sequence
+            let reverse = Self::reverse_complement(&query.seq());
+            let matches = Self::kmp_search_with_iupac(&reverse, &pattern.sq);
+            let mut partial_descs = Vec::with_capacity(matches.len());
             for &start in &matches {
-                let end = start + seq.sq.len();
-                let searched = SearchedDesc::new_from_ref(
-                    &query.id,             // id
-                    query.len + 1 - end,   // start position
-                    query.len + 1 - start, // end position
-                    0,                     // sequence direction
-                    &seq.id,               // element id
-                    seq.sq.len(),          // element length
-                    &seq.sq,               // element sequence
-                    &seq.ac,               // element accession number
-                    &seq.de,               // element description
+                let end = start + pattern.sq.len();
+                let searched = SearchedDesc::new(
+                    &query.id(),             // id
+                    query.len() + 1 - end,   // start position
+                    query.len() + 1 - start, // end position
+                    0,                       // sequence direction
+                    &pattern.id,                 // element id
+                    pattern.sq.len(),            // element length
+                    &pattern.sq,                 // element sequence
+                    &pattern.ac,                 // element accession number
+                    &pattern.de,                 // element description
                 );
-                descs.push(searched);
+                partial_descs.push(searched);
             }
-        }
+            descs.lock().unwrap().extend(partial_descs);
+        });
 
-        Ok(descs)
+        Ok(descs.into_inner().unwrap())
     }
 
     /// Query elements by ID.
@@ -250,7 +263,7 @@ impl Search {
 
             if j == m {
                 matches.push(i - j);
-                j = lps[j - 1]; 
+                j = lps[j - 1];
             } else if i < n && pattern_chars[j] != text_chars[i] {
                 if j != 0 {
                     j = lps[j - 1];

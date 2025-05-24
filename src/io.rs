@@ -2,15 +2,14 @@
 //! The IO Module of the DB.
 
 use bio::io::fasta::Records;
-use comfy_table::presets::NOTHING;
 use std::fmt::Debug;
 
 /// The structure is used to describe the input query sequence.
 #[derive(Debug, Clone)]
 pub struct RecordDesc {
-    pub id: String,  // input query sequence id
-    pub seq: String, // input query sequence
-    pub len: usize,  // input query sequence length
+    id: String,  // input query sequence id
+    seq: String, // input query sequence
+    len: usize,  // input query sequence length
 }
 
 impl RecordDesc {
@@ -21,6 +20,18 @@ impl RecordDesc {
             seq: seq.to_string().to_uppercase(),
             len: seq.len(),
         }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn seq(&self) -> &str {
+        &self.seq
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
     }
 
     /// create new RecordDescs from fasta records of [bio] crate.
@@ -71,14 +82,14 @@ impl RecordDesc {
 
 /// The structure is used to describe the search result.
 #[derive(Debug, Clone)]
-pub struct SearchResult {
+pub struct SearchResult<'a> {
     pub id: String,
     pub count: usize,
-    pub search_descs: Vec<SearchedDesc>,
+    pub search_descs: Vec<SearchedDesc<'a>>,
 }
 
-impl SearchResult {
-    pub fn new(id: &str, searched_descs: Vec<SearchedDesc>) -> Self {
+impl<'a> SearchResult<'a> {
+    pub fn new(id: &str, searched_descs: Vec<SearchedDesc<'a>>) -> Self {
         Self {
             id: id.to_owned(),
             count: searched_descs.len(),
@@ -91,31 +102,32 @@ impl SearchResult {
     }
 }
 
+// TODO： usize -> String -> str
 /// The structure is used to describe the searched element in the database.
 #[derive(Clone, Debug)]
-pub struct SearchedDesc {
-    pub q_id: String,   // input query sequence id
-    pub q_start: usize, // start position of the query
-    pub q_end: usize,   // end position of the query
-    pub q_dir: usize,   // direction of the sequence, 0 for - and 1 for +
-    pub e_id: String,   // element id
-    pub e_len: usize,   // element length
-    pub e_sq: String,   // element sequence
-    pub e_ac: String,   // element accession number
-    pub e_desc: String, // element description
+pub struct SearchedDesc<'a> {
+    pub q_id: &'a str,   // input query sequence id
+    pub q_start: usize,  // start position of the query
+    pub q_end: usize,    // end position of the query
+    pub q_dir: usize,    // direction of the sequence, 0 for - and 1 for +
+    pub e_id: &'a str,   // element id
+    pub e_len: usize,    // element length
+    pub e_sq: &'a str,   // element sequence
+    pub e_ac: &'a str,   // element accession number
+    pub e_desc: &'a str, // element description
 }
 
-impl SearchedDesc {
+impl<'a> SearchedDesc<'a> {
     pub fn new(
-        q_id: String,
+        q_id: &'a str,
         q_start: usize,
         q_end: usize,
         q_dir: usize,
-        e_id: String,
+        e_id: &'a str,
         e_len: usize,
-        e_sq: String,
-        e_ac: String,
-        e_desc: String,
+        e_sq: &'a str,
+        e_ac: &'a str,
+        e_desc: &'a str,
     ) -> Self {
         Self {
             q_id,
@@ -129,67 +141,40 @@ impl SearchedDesc {
             e_desc,
         }
     }
-
-    pub fn new_from_ref(
-        q_id: &str,
-        q_start: usize,
-        q_end: usize,
-        q_dir: usize,
-        e_id: &str,
-        e_len: usize,
-        e_sq: &str,
-        e_ac: &str,
-        e_desc: &str,
-    ) -> Self {
-        Self {
-            q_id: q_id.to_owned(),
-            q_start,
-            q_end,
-            q_dir,
-            e_id: e_id.to_owned(),
-            e_len,
-            e_sq: e_sq.to_owned(),
-            e_ac: e_ac.to_owned(),
-            e_desc: e_desc.to_owned(),
-        }
-    }
 }
 
-impl std::fmt::Display for SearchedDesc {
+impl<'a> std::fmt::Display for SearchedDesc<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let row = vec![
-            self.q_id.clone(),
-            self.q_start.to_string(),
-            self.q_end.to_string(),
-            self.q_dir.to_string(),
-            self.e_id.clone(),
-            self.e_len.to_string(),
-            self.e_sq.clone(),
-            self.e_ac.clone(),
-            self.e_desc.clone(),
-        ];
-        let mut table = comfy_table::Table::new();
-        table
-            .load_preset(NOTHING)
-            .set_content_arrangement(comfy_table::ContentArrangement::Disabled);
-        table.add_row(row);
-
-        write!(f, "{}", table.to_string())
+        write!(
+            f,
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t\n",
+            self.q_id,
+            self.q_start,
+            self.q_end,
+            self.q_dir,
+            self.e_id,
+            self.e_len,
+            self.e_sq,
+            self.e_ac,
+            self.e_desc
+        )
     }
 }
 
 /// A wrapper type around `Vec<SearchedDesc>` to implement Display.
 #[derive(Debug, Clone)]
-pub struct SearchedDescList(pub Vec<SearchedDesc>);
-impl From<Vec<SearchedDesc>> for SearchedDescList {
-    fn from(v: Vec<SearchedDesc>) -> Self {
+pub struct SearchedDescList<'a>(pub Vec<SearchedDesc<'a>>);
+impl<'a> From<Vec<SearchedDesc<'a>>> for SearchedDescList<'a> {
+    fn from(v: Vec<SearchedDesc<'a>>) -> Self {
         Self(v)
     }
 }
 
-impl std::fmt::Display for SearchedDescList {
+impl<'a> std::fmt::Display for SearchedDescList<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let header = vec![
+        let mut res = String::new();
+        let header = format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             "Query ID",
             "Query Start",
             "Query End",
@@ -197,31 +182,14 @@ impl std::fmt::Display for SearchedDescList {
             "Element ID",
             "Element Length",
             "Element Sequence",
-            "Element Accession Number",
-            "Element Description",
-        ];
-        let mut row = vec![];
+            "Element Accession",
+            "Element Description"
+        );
+        res.push_str(&header);
+        let mut rows = String::new();
         for desc in &self.0 {
-            row.push(vec![
-                desc.q_id.clone(),
-                desc.q_start.to_string(),
-                desc.q_end.to_string(),
-                desc.q_dir.to_string(),
-                desc.e_id.clone(),
-                desc.e_len.to_string(),
-                desc.e_sq.clone(),
-                desc.e_ac.clone(),
-                desc.e_desc.clone(),
-            ]);
+            rows.push_str(&desc.to_string());
         }
-        let mut table = comfy_table::Table::new();
-        table
-            .set_header(header)
-            .load_preset(NOTHING)
-            .set_content_arrangement(comfy_table::ContentArrangement::Disabled);
-        for r in row {
-            table.add_row(r);
-        }
-        write!(f, "{}", table.to_string())
+        write!(f, "{}{}", header, rows)
     }
 }

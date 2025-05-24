@@ -2,7 +2,6 @@
 //! This module contains a structure of the PLACE database.
 
 use bincode::Decode;
-use comfy_table::Table;
 use std::collections::HashMap;
 
 #[derive(Decode, Debug, Clone)]
@@ -48,32 +47,18 @@ pub struct SeqDesc {
 
 impl std::fmt::Display for SeqDesc {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let header = vec![
-            "ID", "AC", "DT", "DE", "KW", "OS", "RA", "RT", "RL", "RD", "RC", "SQ",
-        ];
 
-        let row = vec![
-            self.id.clone(),
-            self.ac.clone(),
-            self.dt.clone(),
-            self.de.clone(),
-            self.kw.join(", "),
-            self.os.clone(),
-            self.ra.clone(),
-            self.rt.clone(),
-            self.rl.clone(),
-            self.rd.clone(),
-            self.rc.clone(),
-            self.sq.clone(),
-        ];
+        let header = format!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            "ID", "Accession", "Date", "Description", "Keywords", "Organism Source",
+            "Reference Authors", "Reference Title", "Reference Location",
+            "Reference Details", "Reference Comments", "Sequence");
 
-        let mut table = Table::new();
-        table
-            .set_header(header)
-            .add_row(row)
-            .load_preset(comfy_table::presets::NOTHING)
-            .set_content_arrangement(comfy_table::ContentArrangement::Dynamic);
-        write!(f, "{}", table)
+            let row = format!("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            self.id, self.ac, self.dt, self.de,
+            self.kw.join(", "), self.os, self.ra, self.rt, self.rl,
+            self.rd, self.rc, self.sq);
+
+        write!(f, "{}{}", header, row)
     }
 }
 
